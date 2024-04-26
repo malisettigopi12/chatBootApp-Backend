@@ -1,5 +1,6 @@
 const req = require("express/lib/request");
 const jwt = require("jsonwebtoken");
+const mailService = require("../services/mailer");
 
 const otpGenerator = require("otp-generator");
 
@@ -58,7 +59,18 @@ exports.sendOTP = async (req, res, next) => {
     });
 
     // todo send mail
+    
+    mailService.sendEmail({
+        from : "gopamalisetti@gmail.com",
+        to: "example@gmail.com",
+        subject: "OTP send for chatBoot",
+        text: `Your OTP is ${new_otp}. this is valid for 10 minutes.`,
+    }).then(()=>{
 
+    }).catch((err)=>{
+        
+    })
+    
     res.status(200).json({
         status: "success",
         message: "otp send successfully",

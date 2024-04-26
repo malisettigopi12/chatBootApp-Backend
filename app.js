@@ -2,6 +2,8 @@ const express = require("express");
 
 const morgan = require("morgan");
 
+const routes = require("./routes");
+
 const rateLimit = require("express-rate-limit");
 
 const helmet = require("helmet");
@@ -50,4 +52,6 @@ app.use(cors({
     crendentials: true,
 }));
 
+
+app.use(routes);
 module.exports = app;
