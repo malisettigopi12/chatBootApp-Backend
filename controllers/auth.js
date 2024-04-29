@@ -2,43 +2,49 @@ const req = require("express/lib/request");
 const jwt = require("jsonwebtoken");
 const mailService = require("../services/mailer");
 
+// updated
+const crypto = require("crypto");
+const filterObj = require("../utils/filterObj");
+
+
 const otpGenerator = require("otp-generator");
 
 const User = require("../models/user");
-const filterObj = require("../utils/filterObj");
 const {promisify} = require("util");
-
+const otp = require("../Template/Mail/otp");
 
 const signToken = (userId) => jwt.sign({ userId }, process.env.JWT_SECRET);
 
 exports.register = async (req, res, next) => {
-    const { firstNAme, lastName, email, password } = req.body;
+    const { firstName, lastName, email, password } = req.body;
 
     const filteredBody = filterObj(req.body, "firstName", "lastName", "password", "email");
 
     const existing_user = await User.findOne({ email: email });
 
     if (existing_user && existing_user.verified) {
-        res.status(400).json({
+        return res.status(400).json({
             status: "error",
             message: "Email is already in use, please login."
         })
-        return;
+        
     }
     else if (existing_user) {
-        await User.findOneAndUpdate({ email: email }, filteredBody, { new: true, validateModifiedOnly: true });
+        await User.findOneAndUpdate({ email: email }, filteredBody, 
+            { new: true, validateModifiedOnly: true });
 
         // generate otp and send email to user
         req.userId = existing_user._id;
         next();
     } else {
 
-        // id user recprd is not available.
+        // id user record is not available.
 
-        const newUser = await User.create(filteredBody);
-
+        const newUser = new User(filteredBody);
+        
+        newUser.save();
         // generate otp and send email to user
-        req.userId = new_user._id;
+        req.userId = newUser._id;
         next();
     }
 };
@@ -53,22 +59,21 @@ exports.sendOTP = async (req, res, next) => {
 
     const otp_expiry_time = Date.now() + 10 * 60 * 1000 // 10 mins after otp send is expiry time
 
-    await User.findByIdAndUpdate(userId, {
-        otp: new_otp,
-        otp_expiry_time,
-    });
+    const user = await User.findByIdAndUpdate(userId);
 
-    // todo send mail
+    user.otp = new_otp.toString();
+    user.otp_expiry_time = otp_expiry_time;
+
+    await user.save({new: true, validateModifiedOnly: true});
+    
+    console.log(new_otp);
     
     mailService.sendEmail({
         from : "gopamalisetti@gmail.com",
-        to: "example@gmail.com",
+        to: "user.email",
         subject: "OTP send for chatBoot",
-        text: `Your OTP is ${new_otp}. this is valid for 10 minutes.`,
-    }).then(()=>{
-
-    }).catch((err)=>{
-        
+        html: otp(user.firstName, new_otp),
+        attachments: [],
     })
     
     res.status(200).json({
@@ -88,15 +93,20 @@ exports.verifyOTP = async (req, res, next) => {
     });
 
     if (!user) {
-        res.status(400).json({
+        return res.status(400).json({
             status: "error",
             message: "Email is invalid or otp expired",
         });
-
-        return;
     }
 
-    if(!await user.correctOtp(ptp, user.otp)){
+    if(user.verified){
+        return res.status(400).json({
+            status: "error",
+            message: "Email is already verified",
+        });
+    }
+
+    if(!await user.correctOtp(otp, user.otp)){
         res.status(400).json({
             status: "error",
             message: "wrong otp entered",
@@ -136,8 +146,16 @@ exports.login = async (req, res, next) => {
     }
 
     const userDoc = await User.findOne({ email: email }).select("+password");
+    
+    if (!userDoc || !userDoc.password) {
+        res.status(400).json({
+          status: "error",
+          message: "Incorrect password",
+        });
+        return;
+      }
 
-    if (!userDoc || await userDoc.correctPassword(password, userDoc.passowrd)) {
+    if (!userDoc || !(await userDoc.correctPassword(password, userDoc.password))) {
         res.status(400).json({
             status: "error",
             message: "email or password is incorrect",
@@ -172,14 +190,13 @@ exports.protect = async (req,res,next) => {
        
         token = req.cookies.jwt;
 
-    }else{
-
-        res.status(400).json({
-            status: "error",
-            message: "you are not logged in,please login, to get access",
-        })
-        return;
     }
+
+    if (!token) {
+        return next(
+          new AppError(`You are not logged in! Please log in to get access.`, 401)
+        );
+      }
 
     // 2) verify token
 
@@ -189,24 +206,23 @@ exports.protect = async (req,res,next) => {
 
    const this_user = await User.findById(decoded.userId);
 
-   if(!this_user){
-    res.status(400).json({
-        status: "error",
-        message: "The user doesn't exist",
-    })
-    return;
-   }
+   if (!this_user) {
+    return next(
+      new AppError(
+        "The user belonging to this token does no longer exists.",
+        401
+      )
+    );
+  }
 
 
    // 4) check if user changed their password after token was issued.
 
-   if(this_user.changedPasswordAfter(decoded.iat)){
-       res.status(400).json({
-           status: "error",
-           message: "user recently updated password! please log in again"
-       });
-       return;
-   }
+    if (this_user.changedPasswordAfter(decoded.iat)) {
+       return next(
+      new AppError("User recently changed password! Please log in again.", 401)
+      );
+    }
 
    req.user = this_user;
 
@@ -215,23 +231,21 @@ exports.protect = async (req,res,next) => {
 
 exports.forgotPassword = async(req, res, next) => {
     
-    const user = User.findOne({email: req.body.email});
+    const user = await User.findOne({email: req.body.email});
 
-    if(!user){
-        res.status(400).json({
-            status: "error",
-            message: "user not found",
-        });
-        return;
-    }
-
+    if (!user) {
+        return next(new AppError("There is no user with email address.", 404));
+      }
+    console.log("nbvb,jh")
     const resetToken = user.createPasswordResetToken();
-
-    const resetURL = `https://gopi.com/auth/reset-password/?code=${resetToken}`;
+    await user.save({ validateBeforeSave: false });
 
     try{
 
         // TODO => Send Email With Reset URL
+        const resetURL = `https://gopi.com/auth/reset-password/?code=${resetToken}`;
+
+        console.log(resetToken);
 
         res.status(200).json({
             status: "success",
@@ -245,32 +259,27 @@ exports.forgotPassword = async(req, res, next) => {
 
         await user.save({validateBeforeSave: false});
 
-        res.status(500).json({
-            status: "error",
-            message: "there was an error sending the email, please try again after some time",
-        })
+         return next(
+            new AppError("There was an error sending the email. Try again later!"),
+            500
+            );
     }
 }
 
 exports.resetPassword = async(req, res, next) => {
 
-    const hashedToken = crypto.createHash("sha256").update(req.params.token).digest("hex");
+    const hashedToken = crypto.createHash("sha256").update(req.body.token).digest("hex");
 
     const user = await User.findOne({
         passwordResetToken: hashedToken,
-        passwordResetExpires: {$t : Date.now()},
+        passwordResetExpires: {$gt : Date.now()},
     });
 
-    if(!user){
-        res.status(400).json({
-            status: "error",
-            message: "invalid token send or token expired!",
-        })
-        return;
+    if (!user) {
+        return next(new AppError("Token is invalid or has expired", 400));
     }
 
     user.password = req.body.password;
-    user.passwordConfirm = req.body.passwordConfirm;
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
     user,passwordChangedAt = Date.now();
@@ -282,12 +291,9 @@ exports.resetPassword = async(req, res, next) => {
 
 
     // jwt token send to login 
-    const token = signToken(user._id);
-    
     res.status(200).json({
         status: "success",
         message: "reset password was successfully",
-        token,
     })
 
     
