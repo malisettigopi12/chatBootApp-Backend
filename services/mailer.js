@@ -1,13 +1,15 @@
 const sgMail = require("@sendgrid/mail");
 
-const dotenv = require("dotenv");
+// const dotenv = require("dotenv");
 
-dotenv.config({path: "../config.env"});
+// dotenv.config({path: "../config.env"});
 
-sgMail.setApiKey(process.env.SG_KEY); // TODO IN PROCESS.ENV FILE
+console.log(process.env.SG_KEY);
+//sgMail.setApiKey(process.env.SG_KEY); // TODO IN PROCESS.ENV FILE
 
 const sendSGMail = async({
       recipient,
+      to,
       sender,
       subject,
       html,
@@ -16,17 +18,18 @@ const sendSGMail = async({
 }) => {
     try{
       
-        const from = sender || "gopamalisetti@gmail.com";
+        const from = "gopamalisetti@gmail.com";
 
         const msg = {
-            to : recipient,
-            deom: from,
-            subject,
+            to : to,
+            from: from,
+            subject: subject,
             html: html,
-            text: text,
             attachments,
         }
 
+        
+        console.log(msg);
 
         return sgMail.send(msg);
 
@@ -37,7 +40,7 @@ const sendSGMail = async({
 
 exports.sendEmail = async (srgs) => {
     if(process.env.NODE_ENV === "development"){
-        return new Promise.resolve();
+        return Promise.resolve();
     }else{
         return sendSGMail(args);
     }
