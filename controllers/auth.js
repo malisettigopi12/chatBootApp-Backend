@@ -12,6 +12,7 @@ const otpGenerator = require("otp-generator");
 const User = require("../models/user");
 const {promisify} = require("util");
 const otp = require("../Template/Mail/otp");
+const AppError = require("../utils/AppError");
 
 const signToken = (userId) => jwt.sign({ userId }, process.env.JWT_SECRET);
 
@@ -235,7 +236,7 @@ exports.forgotPassword = async(req, res, next) => {
 
     if (!user) {
         return next(new AppError("There is no user with email address.", 404));
-      }
+    }
     console.log("nbvb,jh")
     const resetToken = user.createPasswordResetToken();
     await user.save({ validateBeforeSave: false });
@@ -280,6 +281,7 @@ exports.resetPassword = async(req, res, next) => {
     }
 
     user.password = req.body.password;
+    user.passwordConfirm = req.body.passwordConfirm;
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
     user,passwordChangedAt = Date.now();
