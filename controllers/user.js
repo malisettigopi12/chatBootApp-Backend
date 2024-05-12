@@ -27,7 +27,7 @@ exports.getUsers = async (req, res, next) => {
 
     const this_user = req.user;
 
-    const remaining_users = allUsers.filter((user)=> !all_users.friends.includes(user._id) &&
+    const remaining_users = all_users.filter((user)=> !all_users.friends.includes(user._id) &&
                             user._id.toString() !== req.user._id.toString());
 
     res.status(200).json({
@@ -47,11 +47,11 @@ exports.getRequests = async (req,res,next) => {
 }
 
 exports.getFriends = async (req, res, next) => {
-    const friends = await User.findById(req.user._id).populate("friends", "_id firstName lastName");
+    const this_friends = await User.findById(req.user._id).populate("friends", "_id firstName lastName");
 
     res.status(200).json({
         status: "success",
-        data: friends,
+        data: this_friends.friends,
         message: "Friends found successfully!",
     })
 }
