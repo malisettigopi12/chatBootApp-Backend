@@ -87,7 +87,7 @@ exports.verifyOTP = async (req, res, next) => {
     // verify OTP and update user record accordingly
 
     const { email, otp } = req.body;
-
+    console.log(otp);
     const user = await User.findOne({
         email,
         otp_expiry_time: { $gt: Date.now() },
@@ -118,7 +118,7 @@ exports.verifyOTP = async (req, res, next) => {
     // otp is correct
 
     user.verified = true;
-    user.otp = undefined;
+    user.otp = otp;
 
     await user.save({new : true, validateModifiedOnly: true});
     
@@ -136,7 +136,7 @@ exports.verifyOTP = async (req, res, next) => {
 exports.login = async (req, res, next) => {
 
     const { email, password } = req.body;
-
+    
     if (!email || !password) {
         res.status(400).json({
             status: "error",
