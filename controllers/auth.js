@@ -12,6 +12,7 @@ const otpGenerator = require("otp-generator");
 const User = require("../models/user");
 const {promisify} = require("util");
 const otp = require("../Template/Mail/otp");
+const AppError = require("../utils/AppError");
 
 const signToken = (userId) => jwt.sign({ userId }, process.env.JWT_SECRET);
 
@@ -86,7 +87,7 @@ exports.verifyOTP = async (req, res, next) => {
     // verify OTP and update user record accordingly
 
     const { email, otp } = req.body;
-
+    console.log(otp);
     const user = await User.findOne({
         email,
         otp_expiry_time: { $gt: Date.now() },
@@ -117,7 +118,7 @@ exports.verifyOTP = async (req, res, next) => {
     // otp is correct
 
     user.verified = true;
-    user.otp = undefined;
+    user.otp = otp;
 
     await user.save({new : true, validateModifiedOnly: true});
     
@@ -127,6 +128,7 @@ exports.verifyOTP = async (req, res, next) => {
         status: "success",
         message: "otp verified successfully!",
         token,
+        user_id: user._id,
     })
 
 }
@@ -135,7 +137,7 @@ exports.verifyOTP = async (req, res, next) => {
 exports.login = async (req, res, next) => {
 
     const { email, password } = req.body;
-
+    
     if (!email || !password) {
         res.status(400).json({
             status: "error",
@@ -169,6 +171,7 @@ exports.login = async (req, res, next) => {
         status: "successful",
         message: "user login was successful",
         token,
+        user_id: userDoc._id
     })
 };
 
@@ -235,7 +238,7 @@ exports.forgotPassword = async(req, res, next) => {
 
     if (!user) {
         return next(new AppError("There is no user with email address.", 404));
-      }
+    }
     console.log("nbvb,jh")
     const resetToken = user.createPasswordResetToken();
     await user.save({ validateBeforeSave: false });
@@ -280,6 +283,7 @@ exports.resetPassword = async(req, res, next) => {
     }
 
     user.password = req.body.password;
+    user.passwordConfirm = req.body.passwordConfirm;
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
     user,passwordChangedAt = Date.now();

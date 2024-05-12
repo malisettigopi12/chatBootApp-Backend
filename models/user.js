@@ -30,7 +30,9 @@ const userSchema = new mongoose.Schema({
     password: {
         type: String,
     },
-
+    passwordConfirm:{
+        type: String,
+    },
     passwordChangedAt: {
         type: Date,
     },
@@ -60,8 +62,16 @@ const userSchema = new mongoose.Schema({
     },
     otp_expiry_time: {
         type: Date,
-    }
-
+    },
+    socket_id:{
+        type: String,
+    },
+    friends:[
+        {
+            type: mongoose.Schema.ObjectId,
+            ref: "User",
+        },
+    ],
 });
 
 userSchema.pre("save", async function (next) {
@@ -79,7 +89,8 @@ userSchema.pre("save", async function (next) {
     if(!this.password) return next();
 
     this.password =  await bcrypt.hash(this.password, 12);
-
+    
+    if(this.passwordConfirm) this.passwordConfirm = await bcrypt.hash(this.passwordConfirm, 12);
     // hash the password with cost of 12(more value more tough encryption (8 - 16));
     console.log("hello from pre")
     

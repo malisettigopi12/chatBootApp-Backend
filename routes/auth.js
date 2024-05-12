@@ -17,4 +17,4 @@ router.post("/reset-password", authController.resetPassword);
 module.exports = router;
 
 
-// http://localhost:3000/v1/auth/login
+// http://localhost:8000/v1/auth/login
