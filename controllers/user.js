@@ -1,5 +1,8 @@
+const AudioCall = require("../models/audioCall");
 const FriendRequest = require("../models/friendRequest");
 const User = require("../models/user");
+const VideoCall = require("../models/videoCall");
+const catchAsync = require("../utils/catchAsync");
 const filterObj = require("../utils/filterObj");
 
 const { generateToken04 } = require("./zegoServerAssistant");
@@ -12,7 +15,14 @@ const appID = process.env.ZEGO_APP_ID; // type: number
 // Example：'sdfsdfsd323sdfsdf'
 const serverSecret = process.env.ZEGO_SERVER_SECRET; // type: 32 byte length string
 
-exports.updateMe = async (req,res, next) => {
+exports.getMe = catchAsync(async (req, res, next) => {
+  res.status(200).json({
+    status: "success",
+    data: req.user,
+  });
+});
+
+exports.updateMe = catchAsync(async (req,res, next) => {
 
     const {user} = req;
 
@@ -28,9 +38,9 @@ exports.updateMe = async (req,res, next) => {
         data: update_user,
         message: "Profile Updated suceessfully",
     })
-};
+});
 
-exports.getUsers = async (req, res, next) => {
+exports.getUsers = catchAsync(async (req, res, next) => {
     const all_users = await User.find({
         verified: true,
     }).select("firstName lastName _id");
@@ -44,9 +54,9 @@ exports.getUsers = async (req, res, next) => {
         status: "success",
         message: "Users found successfully",
     })                        
-}
+});
 
-exports.getRequests = async (req,res,next) => {
+exports.getRequests = catchAsync(async (req,res,next) => {
     const requests = await FriendRequest.find({recipient: req.user._id}).populate("sender", "_id firstName lastName");
     
     res.status(200).json({
@@ -54,9 +64,9 @@ exports.getRequests = async (req,res,next) => {
         data: requests,
         message: "Friends requests found successfully!",
     })
-}
+});
 
-exports.getFriends = async (req, res, next) => {
+exports.getFriends = catchAsync(async (req, res, next) => {
     const this_friends = await User.findById(req.user._id).populate("friends", "_id firstName lastName");
 
     res.status(200).json({
@@ -64,11 +74,15 @@ exports.getFriends = async (req, res, next) => {
         data: this_friends.friends,
         message: "Friends found successfully!",
     })
-}
+});
 
-exports.generateZegoToken = async (req, res, next) => {
+exports.generateZegoToken = catchAsync(async (req, res, next) => {
+    
+  try{
     const { userId, room_id } = req.body;
-  
+
+    console.log(userId, room_id, "from generate zego token");
+
     const effectiveTimeInSeconds = 3600; //type: number; unit: s; token expiration time, unit: second
     const payloadObject = {
       room_id, // Please modify to the user's roomID
@@ -83,7 +97,7 @@ exports.generateZegoToken = async (req, res, next) => {
     const payload = JSON.stringify(payloadObject);
     // Build token
     const token = generateToken04(
-      appID*1, // AppID needs to be a number
+      appID * 1, // APP ID NEEDS TO BE A NUMBER
       userId,
       serverSecret,
       effectiveTimeInSeconds,
@@ -94,4 +108,142 @@ exports.generateZegoToken = async (req, res, next) => {
       message: "Token generated successfully",
       token,
     });
-  };
+  }catch(err) {
+    console.log(err);
+  } 
+  });
+
+  exports.startAudioCall = catchAsync(async (req, res, next) => {
+    const from = req.user._id;
+    const to = req.body.id;
+  
+    const from_user = await User.findById(from);
+    const to_user = await User.findById(to);
+
+    // create a new call audioCall Doc and send required data to client
+    const new_audio_call = await AudioCall.create({
+      participants: [from, to],
+      from,
+      to,
+      status: "Ongoing",
+    });
+  
+    res.status(200).json({
+      data: {
+        from: to_user,
+        roomID: new_audio_call._id,
+        streamID: to,
+        userID: from,
+        userName: from,
+      },
+    });
+  });
+  
+  exports.startVideoCall = catchAsync(async (req, res, next) => {
+    const from = req.user._id;
+    const to = req.body.id;
+  
+    const from_user = await User.findById(from);
+    const to_user = await User.findById(to);
+
+    // create a new call videoCall Doc and send required data to client
+    const new_video_call = await VideoCall.create({
+      participants: [from, to],
+      from,
+      to,
+      status: "Ongoing",
+    });
+  
+    res.status(200).json({
+      data: {
+        from: to_user,
+        roomID: new_video_call._id,
+        streamID: to,
+        userID: from,
+        userName: from,
+      },
+    });
+  });
+
+
+exports.getCallLogs = catchAsync(async (req, res, next) => {
+  const user_id = req.user._id;
+
+  const call_logs = [];
+
+  const audio_calls = await AudioCall.find({
+    participants: { $all: [user_id] },
+  }).populate("from to");
+
+  const video_calls = await VideoCall.find({
+    participants: { $all: [user_id] },
+  }).populate("from to");
+
+  console.log(audio_calls, video_calls);
+
+  for (let elm of audio_calls) {
+    const missed = elm.verdict !== "Accepted";
+    if (elm.from._id.toString() === user_id.toString()) {
+      const other_user = elm.to;
+
+      // outgoing
+      call_logs.push({
+        id: elm._id,
+        img: other_user.avatar,
+        name: other_user.firstName,
+        online: true,
+        incoming: false,
+        missed,
+      });
+    } else {
+      // incoming
+      const other_user = elm.from;
+
+      // outgoing
+      call_logs.push({
+        id: elm._id,
+        img: other_user.avatar,
+        name: other_user.firstName,
+        online: true,
+        incoming: false,
+        missed,
+      });
+    }
+  }
+
+  for (let element of video_calls) {
+    const missed = element.verdict !== "Accepted";
+    if (element.from._id.toString() === user_id.toString()) {
+      const other_user = element.to;
+
+      // outgoing
+      call_logs.push({
+        id: element._id,
+        img: other_user.avatar,
+        name: other_user.firstName,
+        online: true,
+        incoming: false,
+        missed,
+      });
+    } else {
+      // incoming
+      const other_user = element.from;
+
+      // outgoing
+      call_logs.push({
+        id: element._id,
+        img: other_user.avatar,
+        name: other_user.firstName,
+        online: true,
+        incoming: false,
+        missed,
+      });
+    }
+  }
+
+  res.status(200).json({
+    status: "success",
+    message: "Call Logs Found successfully!",
+    data: call_logs,
+  });
+});

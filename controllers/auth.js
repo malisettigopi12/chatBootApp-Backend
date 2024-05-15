@@ -1,7 +1,7 @@
 const req = require("express/lib/request");
 const jwt = require("jsonwebtoken");
 const mailService = require("../services/mailer");
-
+const catchAsync = require("../utils/catchAsync");
 // updated
 const crypto = require("crypto");
 const filterObj = require("../utils/filterObj");
@@ -16,7 +16,7 @@ const AppError = require("../utils/AppError");
 
 const signToken = (userId) => jwt.sign({ userId }, process.env.JWT_SECRET);
 
-exports.register = async (req, res, next) => {
+exports.register = catchAsync(async (req, res, next) => {
     const { firstName, lastName, email, password } = req.body;
 
     const filteredBody = filterObj(req.body, "firstName", "lastName", "password", "email");
@@ -48,9 +48,9 @@ exports.register = async (req, res, next) => {
         req.userId = newUser._id;
         next();
     }
-};
+});
 
-exports.sendOTP = async (req, res, next) => {
+exports.sendOTP = catchAsync(async (req, res, next) => {
     const { userId } = req;
     const new_otp = otpGenerator.generate(6, {
         lowerCaseAlphabets: false,
@@ -81,9 +81,9 @@ exports.sendOTP = async (req, res, next) => {
         status: "success",
         message: "otp send successfully",
     });
-};
+});
 
-exports.verifyOTP = async (req, res, next) => {
+exports.verifyOTP = catchAsync(async (req, res, next) => {
     // verify OTP and update user record accordingly
 
     const { email, otp } = req.body;
@@ -131,10 +131,10 @@ exports.verifyOTP = async (req, res, next) => {
         user_id: user._id,
     })
 
-}
+});
 
 
-exports.login = async (req, res, next) => {
+exports.login = catchAsync(async (req, res, next) => {
 
     const { email, password } = req.body;
     
@@ -173,10 +173,10 @@ exports.login = async (req, res, next) => {
         token,
         user_id: userDoc._id
     })
-};
+});
 
 
-exports.protect = async (req,res,next) => {
+exports.protect = catchAsync(async (req,res,next) => {
 
     // 1)getting jwt and check if it's there
 
@@ -230,9 +230,9 @@ exports.protect = async (req,res,next) => {
    req.user = this_user;
 
    next();
-}
+});
 
-exports.forgotPassword = async(req, res, next) => {
+exports.forgotPassword = catchAsync(async(req, res, next) => {
     
     const user = await User.findOne({email: req.body.email});
 
@@ -267,9 +267,9 @@ exports.forgotPassword = async(req, res, next) => {
             500
             );
     }
-}
+});
 
-exports.resetPassword = async(req, res, next) => {
+exports.resetPassword = catchAsync(async(req, res, next) => {
 
     const hashedToken = crypto.createHash("sha256").update(req.body.token).digest("hex");
 
@@ -301,4 +301,4 @@ exports.resetPassword = async(req, res, next) => {
     })
 
     
-}
+})
