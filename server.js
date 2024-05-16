@@ -58,8 +58,15 @@ io.on("connection", async (socket)=>{
 
     console.log(`User connected ${socket_id}`);
 
-    if(Boolean(user_id)){
-        await User.findByIdAndUpdate(user_id, {socket_id, status: "Online"})
+    if(user_id != null && Boolean(user_id)){
+        try {
+            User.findByIdAndUpdate(user_id, {
+              socket_id: socket.id,
+              status: "Online",
+            });
+          } catch (e) {
+            console.log(e);
+          }
     }
     
     // We can write our socket event listners here ....
@@ -161,9 +168,14 @@ io.on("connection", async (socket)=>{
         });
 
         socket.on("text_message", async (data, callback) => {
-            const {messages} = await OneToOneMessage.findById(
-                data.conversation_id).select("messages");
+            try {
+                const { messages } = await OneToOneMessage.findById(
+                  data.conversation_id
+                ).select("messages");
                 callback(messages);
+              } catch (error) {
+                console.log(error);
+              }
         });
 
         // handle text/link messages
