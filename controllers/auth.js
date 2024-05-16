@@ -164,7 +164,7 @@ exports.login = catchAsync(async (req, res, next) => {
         })
         return;
     }
-
+    
     const token = signToken(userDoc._id);
 
     res.status(200).json({
