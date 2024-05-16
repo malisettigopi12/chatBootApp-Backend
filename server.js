@@ -37,8 +37,8 @@ const server = http.createServer(app);
 
 const io = new Server(server,{
     cors:{
-        origin: "http://localhost:8000",
-        methods: ["GET","POST"],
+        origin: "http://13.201.34.99:8000",
+        methods: ["GET","POST","PUT"],
     }
 });
 
