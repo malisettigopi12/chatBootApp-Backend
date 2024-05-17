@@ -14,7 +14,7 @@ router.get("/get-me", authController.protect, userController.getMe);
 // update
 router.patch("/update-me",authController.protect ,userController.updateMe);
                          // middle-ware           // api function.
-router.get("/get-all-verified-users", authController.protect, userController.getAllVerifiedUsers);
+router.get("/get-all-verified-users", userController.getAllVerifiedUsers);
 router.get("/get-users", authController.protect, userController.getUsers);
 router.get("/get-friends", authController.protect, userController.getFriends);
 router.get("/get-requests", authController.protect, userController.getRequests);
@@ -22,8 +22,10 @@ router.get("/get-requests", authController.protect, userController.getRequests);
 router.post("/start-audio-call", authController.protect, userController.startAudioCall);
 router.post("/start-video-call", authController.protect, userController.startVideoCall);
 
-router.get("get-call-logs", authController.protect, userController.getCallLogs);
+router.get("/get-call-logs", authController.protect, userController.getCallLogs);
+
 module.exports = router;
+
 
 
 
