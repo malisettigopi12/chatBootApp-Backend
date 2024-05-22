@@ -49,8 +49,8 @@ server.listen(port, () => {
 
 io.on("connection", async (socket)=>{
 
-    console.log(JSON.stringify(socket.handshake.query));
-    console.log(socket);
+    // console.log(JSON.stringify(socket.handshake.query));
+    // console.log(socket);
 
     const user_id = socket.handshake.query.user_id;
 
@@ -83,6 +83,7 @@ io.on("connection", async (socket)=>{
             sender: data.from,
             recipient: data.to,
         })
+   
         
          // TODO => create a friend request
 
@@ -95,12 +96,14 @@ io.on("connection", async (socket)=>{
             //
             message: " request sent successfully",
         });
+    });
         
         socket.on("accept_request", async (data) => {
 
             console.log(data);
-
+            console.log("hello");
             const request_doc = await FriendRequest.findById(data.request_id);
+            
 
             console.log(request_doc);
 
@@ -108,6 +111,7 @@ io.on("connection", async (socket)=>{
 
 
             const sender = await User.findById(request_doc.sender);
+            console.log(sender);
             const receiver = await User.findById(request_doc.recipient);
 
             sender.friends.push(request_doc.recipient);
@@ -131,10 +135,11 @@ io.on("connection", async (socket)=>{
             const existing_conversations = await OneToOneMessage.find({
                 participants: {$all : [user_id]},
             }).populate("participants", "firstName lastName avatar _id email status");
-
-            console.log(existing_conversations);
-
-            callback(existing_conversations);
+            
+            console.log("dsknc",existing_conversations);
+            let conversations = [];
+            conversations = existing_conversations ? existing_conversations : [];
+            callback(conversations);
         })
 
         socket.on("start_conversation", async (data) => {
@@ -466,8 +471,7 @@ io.on("connection", async (socket)=>{
             console.log("closing connection");
             socket.disconnect(0);
         })
-    })
-})
+});
 
 process.on("unhandledRejection",(err)=>{
     console.log(err);

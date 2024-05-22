@@ -69,7 +69,7 @@ const userSchema = new mongoose.Schema({
     friends:[
         {
             type: mongoose.Schema.ObjectId,
-            ref: "User",
+            ref: "user",
         },
     ],
     status:{
@@ -137,7 +137,14 @@ userSchema.methods.correctPassword = async function (
     candidatePassword, // 123456
     userPassword // shddjucbkn39oldcml
 ) {
-    return await bcrypt.compare(candidatePassword, userPassword);
+    try{
+        console.log(candidatePassword," ",userPassword);
+        const res = await bcrypt.compare(candidatePassword, userPassword);
+        console.log(res);
+        return res;
+    }catch(error){
+        console.log(error);
+    }
 }
 
 userSchema.methods.correctOtp = async function (
