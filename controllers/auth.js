@@ -52,7 +52,7 @@ exports.register = catchAsync(async (req, res, next) => {
 
 exports.sendOTP = catchAsync(async (req, res, next) => {
     const { userId } = req;
-    const new_otp = otpGenerator.generate(6, {
+    const new_otp = await otpGenerator.generate(6, {
         lowerCaseAlphabets: false,
         upperCaseAlphabets: false,
         specialChars: false,
@@ -179,11 +179,11 @@ exports.login = catchAsync(async (req, res, next) => {
 exports.protect = catchAsync(async (req,res,next) => {
 
     // 1)getting jwt and check if it's there
-
+    console.log("i am at protected middleware");
     let token;
     
     // 'Bearer dsjbd30ibcjkdnclknm'
-    if(req.headers.authorization && req.headers.authorization.startswith("Bearer")){
+    if(req.headers.authorization && req.headers.authorization.startsWith("Bearer")){
         token = req.headers.authorization.split(" ")[1];
 
 

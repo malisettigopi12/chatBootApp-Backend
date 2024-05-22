@@ -4,16 +4,16 @@ const audioCallSchema = new mongoose.Schema({
     participants: [
       {
         type: mongoose.Schema.ObjectId,
-        ref: "User",
+        ref: "user",
       },
     ],
     from: {
       type: mongoose.Schema.ObjectId,
-      ref: "User",
+      ref: "user",
     },
     to: {
       type: mongoose.Schema.ObjectId,
-      ref: "User",
+      ref: "user",
     },
     verdict: {
       type: String,

@@ -47,12 +47,13 @@ exports.getUsers = catchAsync(async (req, res, next) => {
 
     const this_user = req.user;
 
-    const remaining_users = all_users.filter((user)=> !all_users.friends.includes(user._id) &&
+    const remaining_users = all_users.filter((user)=> !this_user.friends.includes(user._id) &&
                             user._id.toString() !== req.user._id.toString());
 
     res.status(200).json({
         status: "success",
         message: "Users found successfully",
+        data: remaining_users
     })                        
 });
 
@@ -184,7 +185,8 @@ exports.generateZegoToken = catchAsync(async (req, res, next) => {
 
 exports.getCallLogs = catchAsync(async (req, res, next) => {
   const user_id = req.user._id;
-
+  
+  console.log("calllogs")
   const call_logs = [];
 
   const audio_calls = await AudioCall.find({

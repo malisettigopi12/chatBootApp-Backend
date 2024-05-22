@@ -3,16 +3,16 @@ const mongoose = require("mongoose");
 const oneToOneMessageSchema = new mongoose.Schema({
      participants:[{
          type: mongoose.Schema.ObjectId,
-         ref: "User",
+         ref: "user",
      }],
      messages:[{
          to:{
              type: mongoose.Schema.ObjectId,
-             ref: "User",
+             ref: "user",
          },
          from:{
              type: mongoose.Schema.ObjectId,
-             ref: "User",
+             ref: "user",
          },
          type:{
              type: String,
